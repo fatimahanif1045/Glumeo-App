@@ -13,6 +13,6 @@ router.put("/update-user", authenticateToken, userController.updateUser)
 
 router.delete('/delete-user', authenticateToken, userController.deleteUser);
 
-router.delete('/user-videos', authenticateToken, userController.getAllVideos);
+router.get('/user-videos', authenticateToken, userController.getAllVideos);
 
 module.exports = router;
