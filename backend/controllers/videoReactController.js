@@ -1,36 +1,44 @@
-const UserReact = require('../models/userReact');
-const User = require('../models/user');
+const VideoReact = require('../models/videoReact');
+const Video = require('../models/video');
 
 exports.reactVideo = async (req, res) => {
     const { video } = req.body;
-    // console.log("hi");
-
     try{
-
         const data ={
             video:video,
             user:req.user.id
         }
-        const userReactOnVideo = await UserReact.findOne(data);
-        if (userReactOnVideo) {
-            return res.status(409).json({
+        let videoExist = await Video.findOne({_id:video});
+        if (!videoExist) {
+            return res.status(400).json({
                 success: false,
                 data: null,
+                message: "Invalid request",
                 error: {
-                    STATUS: 409,
+                    CODE: "BAD_REQUEST",
+                    MESSAGE: "Invalid request",
+                    STATUS: 400,
                     details: {
-                        CODE: "You_Have_Already_Reacted_On_This_Video",
-                        MESSAGE: "You have already reacted on this video"
+                        CODE: "NO_VIDEO_FOUND",
+                        MESSAGE: "No video found"
                     }
                 }
             });
         }
-        const userReact = await new UserReact(data).populate('video');
-        await userReact.save();
+        let videoReact = await VideoReact.findOne(data);
+        if (videoReact) {
+            videoReact = await VideoReact.deleteOne(data)
+            return res.status(200).json({
+                success: true,
+                message: "Reacted removed from this Video",
+            });
+        }
+         videoReact = await new VideoReact(data).populate('video');
+        await videoReact.save();
         res.status(201).json({
             success: true,
             data: {
-                    userReact
+                videoReact
             },
             message: "Successfully Reacted on Video",
         });
@@ -50,7 +58,7 @@ exports.reactVideo = async (req, res) => {
 exports.checkReact = async (req, res) => {
     const { video } = req.body;
     try{
-        const reactedVideo = await UserReact.findOne({video}).populate([
+        const reactedVideo = await VideoReact.findOne({video}).populate([
             { path: "user", select: "name" },
             { path: "video", select: "type , videoUrl" },
         ]);

@@ -1,4 +1,9 @@
 const User = require('../models/user');
+const Video = require('../models/video');
+const VideoReact = require('../models/videoReact');
+const Comment = require('../models/comment');
+const Report = require('../models/report');
+
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken');
 
@@ -122,7 +127,7 @@ exports.userLogin = async (req, res) => {
                     STATUS: 400,
                     details: {
                         CODE: "NO_USER_FOUND",
-                        MESSAGE: "No user found"
+                        MESSAGE: "no user found"
                     }
                 }
             });
@@ -168,25 +173,16 @@ exports.userLogin = async (req, res) => {
 exports.getCurrentUserDetails = async (req, res) => {
     try {
         console.log(req.user);
-        const user = await User.findOne({ _id: req.user._id });   //  User.findOne({ email: req.body.email })
-        const userVideo = await Video.find({ user: req.user._id }).populate([
-            {
-                path: 'user',
-                select: ' -isDeleted '
-            },
-            {
-                path: 'video',
-                select: '-__v' // Adjust fields to exclude as needed
-            }
-        ]);
+        const user = await User.findOne({ _id: req.user.id });  
+        const videos = await Video.find({ user: req.user.id })
         const respData = {
             user,
-            userVideo
+            videos
         }
+        console.log(d);
 
         res.status(200).json({
             success: true,
-            token: token,
             data: { respData },
             message: 'User details',
         });
@@ -200,11 +196,44 @@ exports.getCurrentUserDetails = async (req, res) => {
     }
 }
 
+exports.getAllVideos = async (req, res) => {
+    try {
+
+        const videos = await Video.find().populate([
+            {
+                path: 'user',
+                select: '-email -profilePicture -profileUpdated -likes -videos -filePath '
+            }
+        ]).sort({ uploadedAt: -1 });
+        // console.log("videos", videos[0])
+
+        const videosWithReactCounts = await Promise.all(videos.map(async (video) => {
+            const reactCount = await VideoReact.find({ video: video._id });
+            return {
+                ...video.toObject(),
+                reactCount: reactCount ? reactCount?.length : 0,
+            };
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: { videosWithReactCounts },
+            message: 'videos list',
+        });
+    } catch (err) {
+        console.log("error", err)
+        res.status(500).json({
+            success: false,
+            message: 'Invalid request',
+            error: { CODE: 'INTERNAL_SERVER_ERROR', MESSAGE: err.message },
+        });
+    }
+}
+
 exports.updateUser = async (req, res) => {
     try {
-        const { userId } = req.body
         let body = req.body;
-        const userExist = await User.findOne(req.user._id);
+        const userExist = await User.findOne({_id:req.user.id});
         if (userExist?.profileUpdated === false) {
             const fieldsToUpdate = [
                 'userName',
@@ -224,10 +253,9 @@ exports.updateUser = async (req, res) => {
                 }
             }
             const userUpdate = generateUpdateObject(fieldsToUpdate, body);
-            const user = await User.findOneAndUpdate(req.user._id, userUpdate, { new: true });
+            const user = await User.findOneAndUpdate({_id:req.user.id}, userUpdate, { new: true });
             return res.status(200).json({
                 success: true,
-                token: token,
                 data: { user },
                 message: 'User Updated Successfully',
             });
@@ -254,11 +282,30 @@ const generateUpdateObject = (fieldsArray, dataArray) => {
 
 exports.deleteUser = async (req, res) => {
     try {
-        await Video.deleteMany({ user: req.user._id });
-        await VideoReact.deleteMany({ user: req.user._id });
-        await Comment.deleteMany({ user: req.user._id });
-        await Report.deleteMany({ user: req.user._id });
-        // const userExist = await User.fondOne({_id: req.user._id});
+        const user = await User.findOne({_id:req.user.id});
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                data: null,
+                message: "Invalid request",
+                error: {
+                    CODE: "BAD_REQUEST",
+                    MESSAGE: "Invalid request",
+                    STATUS: 400,
+                    details: {
+                        CODE: "NO_USER_FOUND",
+                        MESSAGE: "no user found"
+                    }
+                }
+            });
+        }
+
+        await Video.deleteMany({ user: req.user.id });
+        await VideoReact.deleteMany({ user: req.user.id });
+        await Comment.deleteMany({ user: req.user.id });
+        await Report.deleteMany({ user: req.user.id });
+        // const userExist = await User.fondOne({_id: req.user.id});
         // if (userExist) {
         //     if (req?.user?.filePath !== '') {
         //         if (fs.existsSync(req?.user?.filePath)) {
@@ -266,11 +313,9 @@ exports.deleteUser = async (req, res) => {
         //         }
         //     }
         // }
-
-        const data = await User.deleteOne(req.user._id);
+        const data = await User.deleteOne({_id:req.user.id});
         return res.status(200).json({
             success: true,
-            token: token,
             data: { data },
             message: 'user deleted successfully',
         });
@@ -285,41 +330,6 @@ exports.deleteUser = async (req, res) => {
     }
 }
  
-exports.getAllVideos = async (req, res) => {
-    try {
-
-        const videos = await Video.find().populate([
-            {
-                path: 'user',
-                select: '-email -profilePicture -profileUpdated -likes -videos -filePath '
-            }
-        ]).sort({ uploadedAt: -1 });
-        // console.log("videos", videos[0])
-
-        const videosWithReactCounts = await Promise.all(videos.map(async (video) => {
-            const reactCount = await VideoReact.find({ video: video._id });
-            return {
-                ...video.toObject(),
-                reactCount: reactCount ? reactCount?.length : 0,
-                followCount: followCount ? followCount?.length : 0,
-            };
-        }));
-
-        res.status(200).json({
-            success: true,
-            token: token,
-            data: { videosWithReactCounts },
-            message: 'videos list',
-        });
-    } catch (err) {
-        console.log("error", err)
-        res.status(500).json({
-            success: false,
-            message: 'Invalid request',
-            error: { CODE: 'INTERNAL_SERVER_ERROR', MESSAGE: err.message },
-        });
-    }
-}
 
 
 // Logout user (optional, if you want to blacklist the token)
