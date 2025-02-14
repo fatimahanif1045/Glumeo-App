@@ -5,9 +5,9 @@ import { TextInput, Button, FlatList, Text } from 'react-native';
 const SearchScreen = () => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
-
+let url= `https://yourapi.com/search?query=${query}`;
     const searchContent = async () => {
-        const response = await fetch(`https://yourapi.com/search?query=${query}`);
+        const response = await fetch(url);
         const data = await response.json();
         setResults(data);
     };

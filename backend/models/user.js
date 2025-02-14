@@ -5,11 +5,15 @@ const userSchema = new mongoose.Schema({
     userName: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    profilePicture: { type: String }, 
+    profilePicture: { type: String, default: "" }, 
+    about:{ type: String, default: ""},
+    gender:{ type: String, 
+        enum:['Male', 'Female', 'Custom'],
+        default: "Custom"
+    },
     filePath: { type: String, default: "" },
-    videos:{ type:String, default:'0' },
+    videos:{ type:Number, default:0 },
     likes:{ type:Number, default:0 },
-    Comments:{ type:Number, default:0 },
     profileUpdated:{
         type:Boolean,
         enum:[true, false],

@@ -3,20 +3,18 @@ const Video = require('../models/video');
 
 exports.reactVideo = async (req, res) => {
     const { video } = req.body;
-    try{
-        const data ={
-            video:video,
-            user:req.user.id
+    try {
+        const data = {
+            video: video,
+            user: req.user.id
         }
-        let videoExist = await Video.findOne({_id:video});
+        let videoExist = await Video.findOne({ _id: video });
         if (!videoExist) {
             return res.status(400).json({
                 success: false,
                 data: null,
-                message: "Invalid request",
+                message: "No video found",
                 error: {
-                    CODE: "BAD_REQUEST",
-                    MESSAGE: "Invalid request",
                     STATUS: 400,
                     details: {
                         CODE: "NO_VIDEO_FOUND",
@@ -33,7 +31,7 @@ exports.reactVideo = async (req, res) => {
                 message: "Reacted removed from this Video",
             });
         }
-         videoReact = await new VideoReact(data).populate('video');
+        videoReact = await new VideoReact(data).populate('video');
         await videoReact.save();
         res.status(201).json({
             success: true,
@@ -42,7 +40,7 @@ exports.reactVideo = async (req, res) => {
             },
             message: "Successfully Reacted on Video",
         });
-    } catch(err) {
+    } catch (err) {
         console.log("error", err)
         res.status(500).json({
             success: false,
@@ -57,27 +55,24 @@ exports.reactVideo = async (req, res) => {
 
 exports.checkReact = async (req, res) => {
     const { video } = req.body;
-    try{
-        const reactedVideo = await VideoReact.findOne({video}).populate([
+    try {
+        const reactedVideo = await VideoReact.findOne({ video }).populate([
             { path: "user", select: "name" },
             { path: "video", select: "type , videoUrl" },
         ]);
-       // console.log("video",reactedVideo)
+        // console.log("video",reactedVideo)
         if (!reactedVideo) {
             return res.status(400).json({
                 success: false,
                 data: null,
                 error: {
-                    CODE: "BAD_REQUEST",
-                    MESSAGE: "Invalid request",
                     STATUS: 400,
-                    details: {
-                        CODE: "NO_Video_FOUND",
-                        MESSAGE: "No video found"
-                    }
+                    CODE: "NO_Video_FOUND",
+                    MESSAGE: "No video found"
+
                 }
             });
-        }        
+        }
         else {
             res.status(200).send({
                 success: true,
@@ -88,7 +83,7 @@ exports.checkReact = async (req, res) => {
             }
             );
         }
-    } catch(err) {
+    } catch (err) {
         res.status(500).json({
             success: false,
             message: "Invalid request",

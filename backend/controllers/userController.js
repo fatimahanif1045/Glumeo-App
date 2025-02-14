@@ -26,10 +26,8 @@ exports.userSignup = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 data: null,
-                message: 'Invalid request',
+                message: 'Email address is invalid',
                 error: {
-                    CODE: 'BAD_REQUEST',
-                    MESSAGE: 'Invalid request',
                     STATUS: 400,
                     details: {
                         CODE: 'MALFORMED_EMAIL',
@@ -43,10 +41,8 @@ exports.userSignup = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 data: null,
-                message: 'Invalid request',
+                message: 'Invalid password type',
                 error: {
-                    CODE: 'BAD_REQUEST',
-                    MESSAGE: 'Invalid request',
                     STATUS: 400,
                     details: {
                         CODE: 'INVALID_PASSWORD_TYPE',
@@ -60,10 +56,8 @@ exports.userSignup = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 data: null,
-                message: 'Invalid request',
+                message: 'Invalid name',
                 error: {
-                    CODE: 'BAD_REQUEST',
-                    MESSAGE: 'Invalid request',
                     STATUS: 400,
                     details: {
                         CODE: 'INVALID_NAME',
@@ -73,6 +67,20 @@ exports.userSignup = async (req, res) => {
             });
         }
 
+        if (typeof userName !== 'string' || name.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                data: null,
+                message: 'Invalid username',
+                error: {
+                    STATUS: 400,
+                    details: {
+                        CODE: 'INVALID_NAME',
+                        MESSAGE: 'Invalid username'
+                    }
+                }
+            });
+        }
         const user = await User.findOne({ email });
 
         if (user) {
@@ -91,7 +99,7 @@ exports.userSignup = async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ name, email, password: hashedPassword });
+        const newUser = new User({ name, userName, email, password: hashedPassword });
 
         await newUser.save()
             .then(result => {
@@ -120,10 +128,8 @@ exports.userLogin = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 data: null,
-                message: "Invalid request",
+                message: "Invalid request, no user found",
                 error: {
-                    CODE: "BAD_REQUEST",
-                    MESSAGE: "Invalid request",
                     STATUS: 400,
                     details: {
                         CODE: "NO_USER_FOUND",
@@ -139,10 +145,8 @@ exports.userLogin = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 data: null,
-                message: "Invalid request",
+                message: "Invalid password",
                 error: {
-                    CODE: "BAD_REQUEST",
-                    MESSAGE: "Invalid request",
                     STATUS: 400,
                     details: {
                         CODE: "INVALID_PASSWORD",
@@ -173,19 +177,131 @@ exports.userLogin = async (req, res) => {
 exports.getCurrentUserDetails = async (req, res) => {
     try {
         console.log(req.user);
-        const user = await User.findOne({ _id: req.user.id });  
+
+        let totalReacts = 0;
+
         const videos = await Video.find({ user: req.user.id })
-        const respData = {
+        console.log(videos);
+
+        for (let video of videos) {
+            const reactionCount = await VideoReact.find({ video: video._id });
+            console.log('reactionCount',reactionCount.length);
+
+            totalReacts += reactionCount.length;
+        }
+        const user = await User.findOneAndUpdate({ _id: req.user.id }, { videos: videos.length, likes: totalReacts }, { new: true });
+
+        const data = {
             user,
             videos
         }
-        console.log(d);
-
         res.status(200).json({
             success: true,
-            data: { respData },
+            data: data,
             message: 'User details',
         });
+    } catch (err) {
+        console.log("error", err)
+        res.status(500).json({
+            success: false,
+            message: 'Invalid request',
+            error: { CODE: 'INTERNAL_SERVER_ERROR', MESSAGE: err.message },
+        });
+    }
+}
+
+exports.updateUser = async (req, res) => {
+    try {
+        let body = req.body;
+        const userExist = await User.findOne({ _id: req.user.id });
+        if (userExist?.profileUpdated === false) {
+            const fieldsToUpdate = [
+                'name',
+                'userName',
+                'profileUpdated',
+                'profilePicture',
+                'about',
+                'gender',
+            ]
+
+            if (req.file) {
+                const fileName = req.file.filename; // Use the updated filename with timestamp
+                const filePath = path.join(__dirname, '../uploads/profilePics', fileName); // Construct the file path
+                body.profilePicture = fileName;
+
+                body.filePath = filePath
+                if (req?.user?.filePath !== '') {
+                    if (fs.existsSync(req?.user?.filePath)) {
+                        fs.unlinkSync(req?.user?.filePath);
+                    }
+                }
+            }
+            const userUpdate = generateUpdateObject(fieldsToUpdate, body);
+            const user = await User.findOneAndUpdate({ _id: req.user.id }, userUpdate, { new: true });
+            return res.status(200).json({
+                success: true,
+                data: { user },
+                message: 'User Updated Successfully',
+            });
+        }
+    } catch (err) {
+        console.log("error", err)
+        res.status(500).json({
+            success: false,
+            message: 'Invalid request',
+            error: { CODE: 'INTERNAL_SERVER_ERROR', MESSAGE: err.message },
+        });
+    }
+}
+
+const generateUpdateObject = (fieldsArray, dataArray) => {
+    const updateObject = {}
+    for (let item in fieldsArray) {
+        if (dataArray[fieldsArray[item]] !== undefined) {
+            updateObject[fieldsArray[item]] = dataArray[fieldsArray[item]]
+        }
+    }
+    return updateObject
+}
+
+exports.deleteUser = async (req, res) => {
+    try {
+        const user = await User.findOne({ _id: req.user.id });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                data: null,
+                message: "Invalid request, no user found",
+                error: {
+                    STATUS: 400,
+                    details: {
+                        CODE: "NO_USER_FOUND",
+                        MESSAGE: "no user found"
+                    }
+                }
+            });
+        }
+
+        await Video.deleteMany({ user: req.user.id });
+        await VideoReact.deleteMany({ user: req.user.id });
+        await Comment.deleteMany({ user: req.user.id });
+        await Report.deleteMany({ user: req.user.id });
+        // const userExist = await User.fondOne({_id: req.user.id});
+        // if (userExist) {
+        //     if (req?.user?.filePath !== '') {
+        //         if (fs.existsSync(req?.user?.filePath)) {
+        //             fs.unlinkSync(req?.user?.filePath);
+        //         }
+        //     }
+        // }
+        const data = await User.deleteOne({ _id: req.user.id });
+        return res.status(200).json({
+            success: true,
+            data: { data },
+            message: 'user deleted successfully',
+        });
+
     } catch (err) {
         console.log("error", err)
         res.status(500).json({
@@ -229,107 +345,6 @@ exports.getAllVideos = async (req, res) => {
         });
     }
 }
-
-exports.updateUser = async (req, res) => {
-    try {
-        let body = req.body;
-        const userExist = await User.findOne({_id:req.user.id});
-        if (userExist?.profileUpdated === false) {
-            const fieldsToUpdate = [
-                'userName',
-                'profileUpdated'
-            ]
-
-            if (req.file) {
-                const fileName = req.file.filename; // Use the updated filename with timestamp
-                const filePath = path.join(__dirname, '../uploads/profilePics', fileName); // Construct the file path
-                body.profilePicture = fileName;
-
-                body.filePath = filePath
-                if (req?.user?.filePath !== '') {
-                    if (fs.existsSync(req?.user?.filePath)) {
-                        fs.unlinkSync(req?.user?.filePath);
-                    }
-                }
-            }
-            const userUpdate = generateUpdateObject(fieldsToUpdate, body);
-            const user = await User.findOneAndUpdate({_id:req.user.id}, userUpdate, { new: true });
-            return res.status(200).json({
-                success: true,
-                data: { user },
-                message: 'User Updated Successfully',
-            });
-        }
-    } catch (err) {
-        console.log("error", err)
-        res.status(500).json({
-            success: false,
-            message: 'Invalid request',
-            error: { CODE: 'INTERNAL_SERVER_ERROR', MESSAGE: err.message },
-        });
-    }
-}
-
-const generateUpdateObject = (fieldsArray, dataArray) => {
-    const updateObject = {}
-    for (let item in fieldsArray) {
-        if (dataArray[fieldsArray[item]] !== undefined) {
-            updateObject[fieldsArray[item]] = dataArray[fieldsArray[item]]
-        }
-    }
-    return updateObject
-}
-
-exports.deleteUser = async (req, res) => {
-    try {
-        const user = await User.findOne({_id:req.user.id});
-
-        if (!user) {
-            return res.status(400).json({
-                success: false,
-                data: null,
-                message: "Invalid request",
-                error: {
-                    CODE: "BAD_REQUEST",
-                    MESSAGE: "Invalid request",
-                    STATUS: 400,
-                    details: {
-                        CODE: "NO_USER_FOUND",
-                        MESSAGE: "no user found"
-                    }
-                }
-            });
-        }
-
-        await Video.deleteMany({ user: req.user.id });
-        await VideoReact.deleteMany({ user: req.user.id });
-        await Comment.deleteMany({ user: req.user.id });
-        await Report.deleteMany({ user: req.user.id });
-        // const userExist = await User.fondOne({_id: req.user.id});
-        // if (userExist) {
-        //     if (req?.user?.filePath !== '') {
-        //         if (fs.existsSync(req?.user?.filePath)) {
-        //             fs.unlinkSync(req?.user?.filePath);
-        //         }
-        //     }
-        // }
-        const data = await User.deleteOne({_id:req.user.id});
-        return res.status(200).json({
-            success: true,
-            data: { data },
-            message: 'user deleted successfully',
-        });
-
-    } catch (err) {
-        console.log("error", err)
-        res.status(500).json({
-            success: false,
-            message: 'Invalid request',
-            error: { CODE: 'INTERNAL_SERVER_ERROR', MESSAGE: err.message },
-        });
-    }
-}
- 
 
 
 // Logout user (optional, if you want to blacklist the token)

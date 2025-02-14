@@ -23,10 +23,8 @@ exports.commentVideo = async (req, res) => {
               return res.status(400).json({
                   success: false,
                   data: null,
-                  message: "Invalid request",
+                  message: "No video found",
                   error: {
-                      CODE: "BAD_REQUEST",
-                      MESSAGE: "Invalid request",
                       STATUS: 400,
                       details: {
                           CODE: "NO_Video_FOUND",
@@ -176,7 +174,7 @@ exports.deleteComment = async (req, res) => {
         if (!commentVideo) {
             return res.status(404).json({
                 success: false,
-                message: "Invalid request",
+                message: "Invalid request, This Video have no comments.",
                 error: `This Video have no comments.`
             })
         }
@@ -185,7 +183,7 @@ exports.deleteComment = async (req, res) => {
         if (!deleteComment) {
             return res.status(404).json({
                 success: false,
-                message: "Invalid request",
+                message: "Invalid request No comment found",
                 error: `comment with id ${id} not found. No comment deleted.`
             })
         }
@@ -224,7 +222,7 @@ exports.deleteAllComment = async (req, res) => {
         if (!deleteComment) {
             return res.status(404).json({
                 success: false,
-                message: "Invalid request",
+                message: "Invalid request, No comments found",
                 error: `No comments found for this video. No comment deleted.`
             })
         }
@@ -266,7 +264,7 @@ exports.editComment = async (req, res) => {
         if (!commentVideo) {
           return res.status(404).json({
               success: false,
-              message: "Invalid request",
+              message: "No comment found",
               error: {
                 CODE: "NO_COMMENT_FOUND",
                 MESSAGE: "No comment found"

@@ -103,8 +103,6 @@ exports.getVideos = async (req, res) => {
                 success: false,
                 data: null,
                 error: {
-                    CODE: "BAD_REQUEST",
-                    MESSAGE: "Invalid request",
                     STATUS: 400,
                     details: {
                         CODE: "NO_Video_FOUND",
@@ -140,7 +138,7 @@ exports.deleteVideo = async (req, res) => {
         if(!deleteVideo){
             return res.status(404).json({
                 success: false,
-                message: "Invalid request",
+                message: "Invalid request, No video found",
                 error: `video with id ${video} not found. No video deleted.`})
         }
 
