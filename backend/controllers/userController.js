@@ -1,74 +1,6 @@
 const User = require('../models/user');
-
-exports.updateUser = async (req, res) => {
-    try {
-        console.log('111')
-
-        let body = req.body;
-        console.log('req', body)
-        const userExist = await User.findOne({ _id: req.user.id });
-        if (!userExist) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
-        console.log('hih2')
-            
-            if (req.file) {
-                console.log('req.file', req.file)
-
-                const fileName = req.file.filename; // Use the updated filename with timestamp
-                const filePath = path.join(__dirname, '../uploads/profilePics', fileName); // Construct the file path
-                body.profilePicture = fileName;
-
-                body.filePath = filePath
-                if (req?.user?.filePath !== '') {
-                    if (fs.existsSync(req?.user?.filePath)) {
-                        fs.unlinkSync(req?.user?.filePath);
-                    }
-                }
-            }
-            console.log('hihi 4')
-            const fieldsToUpdate = [
-                'name',
-                'userName',
-                'profilePicture',
-                'about',
-                'gender',
-            ]
-            console.log('__dirname', __dirname)
-
-            const userUpdate = generateUpdateObject(fieldsToUpdate, body);
-            console.log('hihi 5' )
-
-            const user = await User.findOneAndUpdate({ _id: req.user.id }, userUpdate, { new: true });
-            console.log('hihi 6')
-            return res.status(200).json({
-                success: true,
-                data: { user },
-                message: 'User Updated Successfully',
-            });
-        
-    } catch (err) {
-        console.log("error", err)
-        res.status(500).json({
-            success: false,
-            message: 'Invalid request',
-            error: { CODE: 'INTERNAL_SERVER_ERROR', MESSAGE: err.message },
-        });
-    }
-}
-
-const generateUpdateObject = (fieldsArray, dataArray) => {
-    const updateObject = {}
-    for (let item in fieldsArray) {
-        if (dataArray[fieldsArray[item]] !== undefined) {
-            updateObject[fieldsArray[item]] = dataArray[fieldsArray[item]]
-        }
-    }
-    return updateObject
-}
-
-
-
+const path = require('path');
+const fs = require('fs');
 
 const Video = require('../models/video');
 const VideoReact = require('../models/videoReact');
@@ -250,11 +182,9 @@ exports.getCurrentUserDetails = async (req, res) => {
         let totalReacts = 0;
 
         const videos = await Video.find({ user: req.user.id })
-        console.log(videos);
 
         for (let video of videos) {
             const reactionCount = await VideoReact.find({ video: video._id }).count();
-            console.log('reactionCount',reactionCount);
 
             totalReacts += reactionCount;
         }
@@ -325,6 +255,61 @@ exports.deleteUser = async (req, res) => {
             error: { CODE: 'INTERNAL_SERVER_ERROR', MESSAGE: err.message },
         });
     }
+}
+
+exports.updateUser = async (req, res) => {
+    try {
+        let body = req.body;
+        const userExist = await User.findOne({ _id: req.user.id });
+
+        if (!userExist) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Fields to update
+        const fieldsToUpdate = ['name', 'userName', 'about', 'gender'];
+
+
+        if (req.file) {
+            const fileName = req.file.filename;     // Use the updated filename with timestamp
+            const filePath = path.join(__dirname, '../uploads/profilePics', fileName);
+
+            if (userExist.filePath !== '') {
+                if (fs.existsSync(userExist.filePath)) {
+                    fs.unlinkSync(userExist.filePath);
+                }
+            }
+            body.profilePicture = fileName;
+            body.filePath = filePath;
+            fieldsToUpdate.push('profilePicture', 'filePath');
+        }
+
+        const userUpdate = generateUpdateObject(fieldsToUpdate, body);
+
+        const updatedUser = await User.findOneAndUpdate({ _id: req.user.id }, userUpdate, { new: true });
+        return res.status(200).json({
+            success: true,
+            data: { user: updatedUser },
+            message: 'User Updated Successfully',
+        });
+    } catch (err) {
+        console.log("error", err);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { CODE: 'INTERNAL_SERVER_ERROR', MESSAGE: err.message },
+        });
+    }
+}
+
+const generateUpdateObject = (fieldsArray, dataArray) => {
+    const updateObject = {}
+    for (let item in fieldsArray) {
+        if (dataArray[fieldsArray[item]] !== undefined) {
+            updateObject[fieldsArray[item]] = dataArray[fieldsArray[item]]
+        }
+    }
+    return updateObject
 }
 
 exports.getAllVideos = async (req, res) => {

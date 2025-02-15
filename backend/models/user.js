@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
     userName: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    profilePicture: { type: String, default: "" }, 
+    profilePicture: { type: String, default: "/uploads/Glumeo.png" }, 
     about:{ type: String, default: ""},
     gender:{ type: String, 
         enum:['Male', 'Female', 'Custom'],
