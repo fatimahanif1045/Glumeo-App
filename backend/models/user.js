@@ -14,11 +14,6 @@ const userSchema = new mongoose.Schema({
     filePath: { type: String, default: "" },
     videos:{ type:Number, default:0 },
     likes:{ type:Number, default:0 },
-    profileUpdated:{
-        type:Boolean,
-        enum:[true, false],
-        default:false
-    },
 },
 { timestamps: true },
 );

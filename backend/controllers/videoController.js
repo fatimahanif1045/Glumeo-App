@@ -63,7 +63,7 @@ exports.uploadVideo =  async (req, res) => {
         const videoPath = path.join(__dirname, '../uploads', 'video' , videoFile.filename);
         const videoExtension = path.extname(videoFile.filename);    // Dynamically get file extension for the output video
         const watermarkedVideoPath = path.join(__dirname, '../uploads', 'watermarked_video' , `${path.basename(videoFile.filename, videoExtension)}.mp4`);
-        const watermarkImage = path.join(__dirname, '../uploads' , 'watermark_rec_btn.png');
+        const watermarkImage = path.join(__dirname, '../uploads' , 'Glumeo.png');
 
         if (!fs.existsSync(watermarkImage)) return res.status(400).send('Watermark image not found');
 
@@ -173,7 +173,6 @@ exports.deleteVideo = async (req, res) => {
     }
 };
 
-
 exports.uploadVideoInfo =  async (req, res) => {
     const { type, coordinates, videoUrl, placeName, placeId } = req.body;
     try {
@@ -207,7 +206,7 @@ exports.uploadVideoDeviceId =  async (req, res) => {
         const videoPath = path.join(__dirname, '../uploads', 'video' , videoFile.filename);
         const videoExtension = path.extname(videoFile.filename);    // Dynamically get file extension for the output video
         const watermarkedVideoPath = path.join(__dirname, '../uploads', 'watermarked_video' , `${path.basename(videoFile.filename, videoExtension)}.mp4`);
-        const watermarkImage = path.join(__dirname, '../uploads' , 'watermark_rec_btn.png');
+        const watermarkImage = path.join(__dirname, '../uploads' , 'Glumeo.png');
         
         if (!fs.existsSync(watermarkImage)) return res.status(400).send('Watermark image not found'); 
 
